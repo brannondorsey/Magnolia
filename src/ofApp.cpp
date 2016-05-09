@@ -3,10 +3,12 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
+
     ofBackground(0);
-    player.load("fingers.mov");
+    player.load("videos/forrest.mp4");
     player.setLoopState(OF_LOOP_NORMAL);
     player.play();
+    player.setVolume(0);
     debug = false;
     selectedSampIndex = -1;
     sender.setup("192.168.1.104", 12345);
@@ -17,7 +19,7 @@ void ofApp::setup(){
 void ofApp::update(){
     player.update();
     for (auto sample : samples) {
-       
+        cout << ofVec2f(player.getWidth(), player.getHeight()) << endl;
         sample->update(vidRect,
                        ofVec2f(player.getWidth(), player.getHeight()),
                        player.getPixels());
@@ -155,12 +157,14 @@ void ofApp::draw(){
 }
 
 void ofApp::updateFieldPositions() {
-    int graphHeight = ofGetHeight() / aliasFields.size();
-    for (int i = 0; i < aliasFields.size(); i++) {
-        int y = graphHeight * i + 15;;
-        aliasFields[i]->bounds.y = y;
-        windowFields[i]->bounds.y = y - 15;
-        windowFields[i]->bounds.x = ofGetWidth()/2 + 15;
+    if (aliasFields.size() > 0) {
+        int graphHeight = ofGetHeight() / aliasFields.size();
+        for (int i = 0; i < aliasFields.size(); i++) {
+            int y = graphHeight * i + 15;;
+            aliasFields[i]->bounds.y = y;
+            windowFields[i]->bounds.y = y - 15;
+            windowFields[i]->bounds.x = ofGetWidth()/2 + 15;
+        }
     }
 }
 
@@ -419,12 +423,14 @@ void ofApp::mousePressed(int x, int y, int button){
     
     if (!debug) {
         
-        if (x != 0 && y != 0) {
+        if (x != 0 && y != 0 &&
+            vidRect.inside(x, y)) {
             float vidWidthPercent;
             float vidHeightPercent;
             bool fullWidth = ofGetWidth() <= ofGetHeight();
             
             if (fullWidth) {
+                cout << ofGetHeight() - vidRect.height << endl;
                 int offset = (ofGetHeight() - vidRect.height) * 0.5;
                 vidWidthPercent = float(x) / float(vidRect.width);
                 vidHeightPercent = float(y - offset) / float(vidRect.height);

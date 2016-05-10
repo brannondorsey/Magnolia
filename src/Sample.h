@@ -28,6 +28,8 @@ public:
     struct AliasAddress {
         sampleType type;
         string address;
+        float min = -1;
+        float max = -1;
     };
     
     Sample();
@@ -68,6 +70,8 @@ public:
     ofVec4f vals[BUFFER_SIZE];
     //WTF, if vals is declared as the last public variable shit hits the fan
     ofVec4f val;
+    float min;
+    float max;
     
 protected:
     

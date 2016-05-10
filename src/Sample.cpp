@@ -9,6 +9,7 @@
 #include "Sample.h"
 
 const unsigned int Sample::bufferSize = BUFFER_SIZE;
+size_t find_nth(const string& haystack, size_t pos, const string& needle, size_t nth);
 
 Sample::Sample(){
 
@@ -26,6 +27,8 @@ Sample::Sample(float vidWidthPercent, float vidHeightPercent) {
     _smoothedVals.push_back(SmoothedFloat(1, 0));
     _smoothedVals.push_back(SmoothedFloat(1, 0));
     _scaleBounds.set(0, 255);
+    min = -1;
+    max = -1;
     setSmooth(1);
 }
 
@@ -82,6 +85,20 @@ void Sample::updateName() {
         if (_name[0] != '/') {
             _name.insert(_name.begin(), '/');
         }
+        
+        if (count(_name.begin(), _name.end(), ':') == 2) {
+            
+            int one = find_nth(_name, 0, ":", 0);
+            int two = find_nth(_name, 0, ":", 1);
+            
+            min = stof(_name.substr(one + 1, two - one - 1));
+            max = stof(_name.substr(two + 1));
+            
+            cout << "min: " << min << " max: " << max << endl;
+            
+            _name = _name.substr(0, one);
+        }
+
         setEnabled(true);
     }
 }

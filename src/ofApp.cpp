@@ -1,6 +1,15 @@
 #include "ofApp.h"
 // Made with OF v0.9.3, untested w/ other versions.
 
+// http://stackoverflow.com/questions/18972258/index-of-nth-occurrence-of-the-string
+size_t find_nth(const string& haystack, size_t pos, const string& needle, size_t nth)
+{
+    size_t found_pos = haystack.find(needle, pos);
+    if(0 == nth || string::npos == found_pos)  return found_pos;
+    return find_nth(haystack, found_pos+1, needle, nth-1);
+}
+
+
 //--------------------------------------------------------------
 void ofApp::setup(){
 
@@ -11,7 +20,7 @@ void ofApp::setup(){
     player.setVolume(0);
     debug = false;
     selectedSampIndex = -1;
-    sender.setup("192.168.1.104", 12345);
+    sender.setup("localhost", 12345);
     windowClickPoints.set(-1);
 }
 
@@ -19,7 +28,6 @@ void ofApp::setup(){
 void ofApp::update(){
     player.update();
     for (auto sample : samples) {
-        cout << ofVec2f(player.getWidth(), player.getHeight()) << endl;
         sample->update(vidRect,
                        ofVec2f(player.getWidth(), player.getHeight()),
                        player.getPixels());
@@ -39,6 +47,13 @@ void ofApp::update(){
             
             const ofVec2f& scale = sample->getScaleBounds();
             m.addFloatArg(ofClamp(ofMap(val, scale.x, scale.y, 0, 1), 0, 1));
+            
+            if (sample->min != -1 && sample->max != -1) {
+                cout << "IN HERE: " << sample->min << ", " << sample->max << endl;
+                m.addFloatArg(sample->min);
+                m.addFloatArg(sample->max);
+            }
+            
             sender.sendMessage(m, false);
             
             // send messages to aliases
@@ -51,8 +66,16 @@ void ofApp::update(){
                     case Sample::sampleType::GREEN: val = sample->val[1]; break;
                     case Sample::sampleType::BLUE: val = sample->val[2]; break;
                 }
+                
                 const ofVec2f& scale = sample->getScaleBounds();
                 m.addFloatArg(ofClamp(ofMap(val, scale.x, scale.y, 0, 1), 0, 1));
+
+                if (alias.min != -1 && alias.max != -1) {
+                    m.addFloatArg(alias.min);
+                    m.addFloatArg(alias.max);
+                    cout << "In here: " << alias.min << ", " << alias.max << endl;
+                }
+                
                 sender.sendMessage(m, false);
             }
         }
@@ -141,7 +164,6 @@ void ofApp::draw(){
             }
             if (windowClickPoints.x != -1 && windowClickPoints.y != -1 &&
                 windowClickPoints.z == -1 && windowClickPoints.w == -1) {
-                cout << "in here" << endl;
                 ofPushStyle();
                 ofSetColor(255, 80);
                 int graphHeight = ofGetHeight() / samples.size();
@@ -202,8 +224,10 @@ void ofApp::onWindowFieldTextChanged(const void * sender, string& text) {
 Sample::AliasAddress ofApp::createAliasAddress(string addressText, Sample::sampleType defaultType) {
     
     Sample::AliasAddress alias;
+    bool channelSpecified = false;
     
     if (addressText.length() > 1 && addressText[1] == ':') {
+        channelSpecified = true;
         switch (addressText[0]) {
             case 'r': case 'R':
                 alias.type = Sample::sampleType::RED;
@@ -229,6 +253,19 @@ Sample::AliasAddress ofApp::createAliasAddress(string addressText, Sample::sampl
     if (addressText.length() > 0) {
         if (addressText[0] != '/') addressText.insert(addressText.begin(), '/');
         alias.address = addressText;
+    }
+    
+    if (count(addressText.begin(), addressText.end(), ':') == 2) {
+        
+        int one = find_nth(addressText, 0, ":", 0);
+        int two = find_nth(addressText, 0, ":", 1);
+        
+        float min = stof(addressText.substr(one + 1, two - one - 1));
+        float max = stof(addressText.substr(two + 1));
+        alias.min = min;
+        alias.max = max;
+        
+        alias.address = addressText.substr(0, one);
     }
     
     return alias;
@@ -347,7 +384,8 @@ void ofApp::keyReleased(int key){
             if (key == '/' ||
                  (key >= 65 && key <= 90) /*A-Z*/ ||
                  (key >= 97 && key <= 122) /*a-z*/ ||
-                 (key >= 48 && key <= 57) /*0-9*/) {
+                 (key >= 48 && key <= 57) /*0-9*/ ||
+                  key == ':') {
                 samples[selectedSampIndex]->addCharToName(key);
             } else if (key == 13) { // enter
                 samples[selectedSampIndex]->updateName();
@@ -430,7 +468,6 @@ void ofApp::mousePressed(int x, int y, int button){
             bool fullWidth = ofGetWidth() <= ofGetHeight();
             
             if (fullWidth) {
-                cout << ofGetHeight() - vidRect.height << endl;
                 int offset = (ofGetHeight() - vidRect.height) * 0.5;
                 vidWidthPercent = float(x) / float(vidRect.width);
                 vidHeightPercent = float(y - offset) / float(vidRect.height);
